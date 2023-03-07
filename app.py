@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
-from modal import Product
-from database import db,ma
+from database import db, ma
+from modal import Product, Review
+from datetime import datetime
+from sqlalchemy.types import Unicode 
 import os
-# from util.script import create_script,get_Data
 
+# Init app
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 # Database
@@ -12,40 +14,94 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Init db
 db.init_app(app)
+# Init ma
 ma.init_app(app)
 
-
+# Product Schema
 class ProductSchema(ma.Schema):
   class Meta:
-    fields = ('id', 'status', 'copy_right', 'num_result', 'last_modified','results')
+    fields = ('id', 'status', 'copy_right', 'num_results', 'last_modified','results')
 
-# Init schema
+# Init Product schema
 product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
 
-@app.route("/addlist",methods=["POST"])
-def addList():
-    # id = request.json["id"]
-    status = request.json["status"]
-    copy_right = request.json["copy_right"] 
-    num_result = request.json["num_result"]
-    last_modified = request.json["last_modified"]
-    results = request.json["results"]
-    
-    db.create_all();
-    new_book=Product(status,copy_right,num_result,last_modified,results)
-    db.session.add(new_book)
-    db.session.commit()
-    return product_schema.jsonify(new_book)
-    
-@app.route("/list",methods=["GET"])   
-def getList():
-    all_books=Product.query.all()
-    result=products_schema.dump(all_books)
-    return jsonify(result)
+# Product Schema
+class ReviewSchema(ma.Schema):
+  class Meta:
+    fields = ('id', 'status', 'copy_right', 'num_results','results')
 
-     
+# Init Product schema
+review_schema = ReviewSchema()
+reviews_schema = ReviewSchema(many=True)
+
+# Create a Product
+@app.route('/product', methods=['POST'])
+def add_product():
+  status = request.json['status']
+  copy_right = request.json['copy_right']
+  num_results = request.json['num_results']
+  last_modified = datetime.strptime(request.json['last_modified'], '%Y-%m-%dT%H:%M:%S%z')
+  results = request.json['results']
+  
+  db.create_all()
+
+  new_product = Product(status, copy_right, num_results, last_modified, results)
+ 
+  db.session.add(new_product)
+  db.session.commit()
+
+  return product_schema.jsonify(new_product)
+
+# Get All Products
+@app.route('/products', methods=['GET'])
+def get_products():
+  all_products = Product.query.all()
+  result = products_schema.dump(all_products)
+  print(result[0]['results']['books'])
+  return jsonify(result)
+
+
+# Create a Review
+@app.route('/review', methods=['POST'])
+def add_review():
+  status = request.json['status']
+  copy_right = request.json['copy_right']
+  num_results = request.json['num_results']
+  results = request.json['results']
+  
+  db.create_all()
+
+  new_review = Review(status, copy_right, num_results, results)
+ 
+  db.session.add(new_review)
+  db.session.commit()
+
+  return review_schema.jsonify(new_review)
+
+# Get All Review
+@app.route('/reviews', methods=['GET'])
+def get_reviews():
+  all_reviews = Review.query.all()
+  result = reviews_schema.dump(all_reviews)
+  return jsonify(result)
+
+@app.route('/reviews.json', methods=['GET'])
+def get_author():
+    book_author=request.args.get("author")
+    book_title=request.args.get("title")
+    isbn13=request.args.get("isbn")
+    if book_author:
+        all_reviews = Review.query.filter(Review.results[0]["book_author"].contains(book_author))
+    elif book_title:
+        all_reviews = Review.query.filter(Review.results[0]["book_title"].contains(book_title))
+    else:
+        all_reviews = Review.query.filter(Review.results[0]["isbn13"].contains([isbn13]))
+        
+    result = reviews_schema.dump(all_reviews) 
+    return jsonify(result)
 
 if __name__ == "__main__":
     app.run(port=5001, debug = True)
