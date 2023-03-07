@@ -2,7 +2,7 @@
 from database import db
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.dialects.postgresql import ARRAY
+# from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class Product(db.Model):
