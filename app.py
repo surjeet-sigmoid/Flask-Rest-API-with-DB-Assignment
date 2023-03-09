@@ -38,7 +38,7 @@ review_schema = ReviewSchema()
 reviews_schema = ReviewSchema(many=True)
 
 # Create a Product
-@app.route('/product', methods=['POST'])
+@app.route('/addlist', methods=['POST'])
 def add_product():
   status = request.json['status']
   copy_right = request.json['copy_right']
@@ -56,12 +56,47 @@ def add_product():
   return product_schema.jsonify(new_product)
 
 # Get All Products
-@app.route('/products', methods=['GET'])
+@app.route('/lists', methods=['GET'])
 def get_products():
   all_products = Product.query.all()
   result = products_schema.dump(all_products)
-  print(result[0]['results']['books'])
   return jsonify(result)
+
+@app.route('/lists/names.json', methods=['GET'])
+def get_list_names():
+  all_products = Product.query.all()
+  product_lists = products_schema.dump(all_products)
+  list_res=[]
+  for product_list in product_lists:
+    for list in product_list["results"]["lists"]:
+        list_res.append(list["books"][0])
+  return jsonify(list_res)
+
+@app.route('/lists/<date>/<name>', methods=['GET'])
+def get_list_with_date_and_name(date,name):
+  all_products = Product.query.all()
+  product_lists = products_schema.dump(all_products)
+  list_res=[]
+  for product_list in product_lists:
+    if product_list["results"]["bestsellers_date"]==date:
+        for list in product_list["results"]["lists"]:
+            if list["list_name_encoded"]==name[:-5]:
+                list_res.append(list)       
+  return jsonify(list_res)
+
+@app.route('/lists/current/<name>', methods=['GET'])
+def get_list_with_current_date_and_name(name):
+  all_products = Product.query.all()
+  product_lists = products_schema.dump(all_products)
+  sorted_product_list_by_date=sorted(product_lists,key=lambda product_list:product_list["results"]["bestsellers_date"])
+  list_res=[]
+  current_date=sorted_product_list_by_date[0]["results"]["bestsellers_date"]
+  for product_list in product_lists:
+    if product_list["results"]["bestsellers_date"]==current_date:
+        for list in product_list["results"]["lists"]:
+            if list["list_name_encoded"]==name[:-5]:
+                list_res.append(list)
+  return jsonify(list_res)
 
 
 # Create a Review
@@ -98,8 +133,7 @@ def get_author():
     elif book_title:
         all_reviews = Review.query.filter(Review.results[0]["book_title"].contains(book_title))
     else:
-        all_reviews = Review.query.filter(Review.results[0]["isbn13"].contains([isbn13]))
-        
+        all_reviews = Review.query.filter(Review.results[0]["isbn13"].contains([isbn13]))    
     result = reviews_schema.dump(all_reviews) 
     return jsonify(result)
 
