@@ -97,7 +97,40 @@ def get_list_with_current_date_and_name(name):
             if list["list_name_encoded"]==name[:-5]:
                 list_res.append(list)
   return jsonify(list_res)
+@app.get('/lists/best-sellers/history.json')
+def get_best_seller_history():
+  pass
 
+@app.get('/lists/full-overview.json')
+def get_full_overview():
+  published_date = request.args.get("published_date")
+  if not published_date:
+    all_products = Product.query.order_by(Product.results["published_date"].desc()).limit(1)
+  else:
+    published_date = '"'+published_date+'"'
+    all_products = Product.query.filter(Product.results["published_date"] >= published_date).limit(1)
+  results = products_schema.dump(all_products)
+  return jsonify(results)
+
+
+@app.get('/lists/overview.json')
+def get_overview():
+  published_date = request.args.get("published_date")
+  if not published_date:
+    all_products = Product.query.order_by(Product.results["published_date"].desc()).limit(1)
+  else:
+    published_date = '"'+published_date+'"'
+    all_products = Product.query.filter(Product.results["published_date"] >= published_date).limit(1)
+  results = products_schema.dump(all_products)
+  length_lists = len(results[0]["results"]["lists"])
+  key_list_remove = ['buy_links','amazon_product_url','article_chapter_link','book_image','book_image_width','book_image_height'
+                      , 'book_review_link', 'first_chapter_link', 'book_uri', 'rank_last_week', 'sunday_review_link', 'weeks_on_list']
+  for i in range(length_lists):
+    results[0]["results"]["lists"][i]["books"] = results[0]["results"]["lists"][i]["books"][:5]
+    for book in results[0]["results"]["lists"][i]["books"]:
+      for key in key_list_remove:
+        book.pop(key, None)
+  return jsonify(results)
 
 # Create a Review
 @app.route('/review', methods=['POST'])
@@ -138,7 +171,7 @@ def get_author():
     return jsonify(result)
 
 if __name__ == "__main__":
-    app.run(port=5001, debug = True)
+    app.run(port=5000, debug = True)
   
 
 
